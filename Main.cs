@@ -10,18 +10,17 @@ using JetBrains.Annotations;
 
 // TODO: Make crafting status update after properly crafting stuff.
 namespace BalaurBohemianBroken {
-    [BepInPlugin("com.balaur.BetterLogic", "BetterInventoryLogic", "0.1.0")]
+    [BepInPlugin("com.balaur.BetterLogic", "BetterInventoryLogic", "0.1.1")]
     public class BetterInventoryLogic : BaseUnityPlugin {
         public static BetterInventoryLogic instance;
-        
-        public static List<CraftingComparison> comparison_stack = new List<CraftingComparison>() {
-            // TODO: Items not in inventory sort.
-            new CraftingCompareContainer(true),
-            new CraftingCompareWearable(true),
-            new CraftingCompareQuality(false),
-            new CraftingCompareValue(false),
-            new CraftingCompareCondition(true),
-        };
+
+        public static bool compare_container_enabled;
+        public static bool compare_wearable_enabled;
+        public static bool compare_quality_enabled;
+        public static bool compare_value_enabled;
+        public static bool compare_condition_enabled;
+
+        public static List<CraftingComparison> comparison_stack = new List<CraftingComparison>();
         
         public void Awake() {
             instance = this;
@@ -35,8 +34,42 @@ namespace BalaurBohemianBroken {
             target = typeof(Recipe).GetMethod("GetItemsForRecipeThorough");
             patch = typeof(BetterInventoryLogic).GetMethod("PrefixGetItemsForRecipeThorough");
             harmony.Patch(target, prefix: new HarmonyMethod(patch));
+
+            target = typeof(Settings).GetMethod("DefaultSettings");
+            patch = typeof(BetterInventoryLogic).GetMethod("PostfixDefaultSettings");
+            harmony.Patch(target, postfix: new HarmonyMethod(patch));
+
+            target = typeof(Locale).GetMethod("LoadLanguage");
+            patch = typeof(BetterInventoryLogic).GetMethod("PostfixLoadLanguage");
+            harmony.Patch(target, postfix: new HarmonyMethod(patch));
         }
 
+        private static void CreateComparisonStack() {
+            // TODO: Allow users to organize the stack themselves.
+            comparison_stack = new List<CraftingComparison>();
+
+            if (compare_container_enabled) {
+                comparison_stack.Add(new CraftingCompareContainer(true));
+            }
+            
+            if (compare_wearable_enabled) {
+                comparison_stack.Add(new CraftingCompareWearable(true));
+            }
+            
+            if (compare_quality_enabled) {
+                comparison_stack.Add(new CraftingCompareQuality(false));
+            }
+            
+            if (compare_value_enabled) {
+                comparison_stack.Add(new CraftingCompareValue(true));
+            }
+            
+            if (compare_condition_enabled) {
+                comparison_stack.Add(new CraftingCompareCondition(true));
+            }
+        }
+        
+        #region Patches
         public static bool PrefixGetItemsForRecipe(Recipe __instance, ref List<Item> __result) {
             __result = CraftingLogic(__instance, true);
             return false;
@@ -47,6 +80,76 @@ namespace BalaurBohemianBroken {
             return false;
         }
 
+        public static void PostfixLoadLanguage() {
+            Locale.currentLang.other.Add("gamesetcompare_container_enabled", "Compare container");
+            Locale.currentLang.other.Add("gamesetcompare_container_enableddsc", "Use containers later.");
+            
+            Locale.currentLang.other.Add("gamesetcompare_wearable_enabled", "Compare wearable");
+            Locale.currentLang.other.Add("gamesetcompare_wearable_enableddsc", "Use wearables later.");
+            
+            Locale.currentLang.other.Add("gamesetcompare_quality_enabled", "Compare quality");
+            Locale.currentLang.other.Add("gamesetcompare_quality_enableddsc", "Use items of lower quality, like lower hammering, later.");
+            
+            Locale.currentLang.other.Add("gamesetcompare_value_enabled", "Compare value");
+            Locale.currentLang.other.Add("gamesetcompare_value_enableddsc", "Use items of higher trading value later.");
+            
+            Locale.currentLang.other.Add("gamesetcompare_condition_enabled", "Compare condition");
+            Locale.currentLang.other.Add("gamesetcompare_condition_enableddsc", "Use items with higher condition later.");
+        }
+
+        public static void PostfixDefaultSettings(List<Setting> __result) {
+            List<Setting> my_settings = new List<Setting> {
+                new SettingBool {
+                    name = "compare_container_enabled",
+                    value = true,
+                    apply = delegate {
+                        BetterInventoryLogic.compare_container_enabled = Settings.Get<SettingBool>("compare_container_enabled").value;
+                        CreateComparisonStack();
+                    },
+                    category = Setting.SettingCategory.Game
+                },
+                new SettingBool {
+                    name = "compare_wearable_enabled",
+                    value = true,
+                    apply = delegate {
+                        BetterInventoryLogic.compare_wearable_enabled = Settings.Get<SettingBool>("compare_wearable_enabled").value;
+                        CreateComparisonStack();
+                    },
+                    category = Setting.SettingCategory.Game
+                },
+                new SettingBool {
+                    name = "compare_quality_enabled",
+                    value = true,
+                    apply = delegate {
+                        BetterInventoryLogic.compare_quality_enabled = Settings.Get<SettingBool>("compare_quality_enabled").value;
+                        CreateComparisonStack();
+                    },
+                    category = Setting.SettingCategory.Game
+                },
+                new SettingBool {
+                    name = "compare_value_enabled",
+                    value = true,
+                    apply = delegate {
+                        BetterInventoryLogic.compare_value_enabled = Settings.Get<SettingBool>("compare_value_enabled").value;
+                        CreateComparisonStack();
+                    },
+                    category = Setting.SettingCategory.Game
+                },
+                new SettingBool {
+                    name = "compare_condition_enabled",
+                    value = true,
+                    apply = delegate {
+                        BetterInventoryLogic.compare_condition_enabled = Settings.Get<SettingBool>("compare_condition_enabled").value;
+                        CreateComparisonStack();
+                    },
+                    category = Setting.SettingCategory.Game
+                },
+            };
+            __result.AddRange(my_settings);
+        }
+        #endregion
+        
+        #region Crafting logic
         [CanBeNull]
         public static List<Item> CraftingLogic(Recipe __instance, bool stop_on_null) {
             // TODO: Click on an item in the crafting window to tell recipe to not use it.
@@ -104,21 +207,20 @@ namespace BalaurBohemianBroken {
                 return null;
             
             // Find the best item for this slot
-            
             candidates.Sort((x, y) => CompareCraftingDesirability(x, y, slot));
-            return candidates.First();
+            return candidates.Last();
         }
 
         public static int CompareCraftingDesirability(Item x, Item y, RecipeItem recipe_slot) {
             foreach (CraftingComparison comparison in comparison_stack) {
                 int comp_result = comparison.Compare(x, y, recipe_slot);
-                instance.Logger.LogInfo(comp_result);
                 if (comp_result != 0)
                     return comp_result;
             }
 
             return 0;
         }
+        #endregion
         
         private void StorageLogic() {
             // Store in container with type specification.
@@ -151,6 +253,7 @@ namespace BalaurBohemianBroken {
             }
         }
         protected int reverse_sign = 1;  // Used in methods to invert the result if needed.
+        public int priority = 0;  // Used to order comparisons. Should find a better method.
         
         public CraftingComparison(bool reverse) {
             Reverse = reverse;
@@ -170,9 +273,64 @@ namespace BalaurBohemianBroken {
         public override int Compare(Item x, Item y, RecipeItem recipe_slot) {
             // Check how this works with liquids. Source also does this comparison in another branch:
             // (Item.GetQualityThatMeetsCriteria(this.quality, liquidType.GetScaledQualities(liquidStack.amount))
+            if (recipe_slot.quality == null)
+                return 0;
+
+            if (recipe_slot.isLiquid)
+                return CompareLiquids(x, y, recipe_slot);
+            return CompareSolids(x, y, recipe_slot);
+        }
+
+        private int CompareSolids(Item x, Item y, RecipeItem recipe_slot) {
+            // Things without a quality can be passed in if a quality isn't required for the recipe.
+            var x_qual = Item.GetQualityThatMeetsCriteria(recipe_slot.quality, x.Stats.qualities);
+            if (x_qual == null)
+                return 0;
+            var y_qual = Item.GetQualityThatMeetsCriteria(recipe_slot.quality, y.Stats.qualities);
+            if (y_qual == null)
+                return 0;
             float x_amount = Item.GetQualityThatMeetsCriteria(recipe_slot.quality, x.Stats.qualities).amount;
             float y_amount = Item.GetQualityThatMeetsCriteria(recipe_slot.quality, y.Stats.qualities).amount;
             return x_amount.CompareTo(y_amount)  * reverse_sign;
+        }
+
+        private int CompareLiquids(Item x, Item y, RecipeItem recipe_slot) {
+            // Largely adapted from decomp in RecipeItem.GetMatchingItem
+            WaterContainerItem x_liquid;
+            x.TryGetComponent<WaterContainerItem>(out x_liquid);
+            WaterContainerItem y_liquid;
+            y.TryGetComponent<WaterContainerItem>(out y_liquid);
+            if (x_liquid == null) {
+                if (y_liquid == null) {
+                    return 0;
+                }
+                return -1;
+            }
+            if (y_liquid == null) {
+                return 1;
+            }
+
+            if (recipe_slot.specific)
+                return x_liquid.AmountOf(recipe_slot.specificId).CompareTo(y_liquid.AmountOf(recipe_slot.specificId));
+
+            float x_amount = 0, y_amount = 0;
+            foreach (LiquidStack liquid_stack in x_liquid.stack) {
+                LiquidType liquid_type = Liquids.Registry[liquid_stack.liquidId];
+                var qual = Item.GetQualityThatMeetsCriteria(recipe_slot.quality,  liquid_type.GetScaledQualities(liquid_stack.amount));
+                if (qual == null)
+                    break;
+                x_amount = qual.amount;
+            }
+            
+            foreach (LiquidStack liquid_stack in y_liquid.stack) {
+                LiquidType liquid_type = Liquids.Registry[liquid_stack.liquidId];
+                var qual = Item.GetQualityThatMeetsCriteria(recipe_slot.quality,  liquid_type.GetScaledQualities(liquid_stack.amount));
+                if (qual == null)
+                    break;
+                y_amount = qual.amount;
+            }
+
+            return x_amount.CompareTo(y_amount);
         }
     }
 
