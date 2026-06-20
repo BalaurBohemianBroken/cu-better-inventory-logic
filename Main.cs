@@ -8,9 +8,10 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 
+// TODO: This likely is incompatible with QoL. I need to test and report.
 // TODO: Make crafting status update after properly crafting stuff.
 namespace BalaurBohemianBroken {
-    [BepInPlugin("com.balaur.BetterLogic", "BetterInventoryLogic", "0.1.1")]
+    [BepInPlugin("com.balaur.BetterLogic", "BetterInventoryLogic", "0.1.2")]
     public class BetterInventoryLogic : BaseUnityPlugin {
         public static BetterInventoryLogic instance;
 
@@ -20,7 +21,12 @@ namespace BalaurBohemianBroken {
         public static bool compare_value_enabled;
         public static bool compare_condition_enabled;
 
-        public static List<CraftingComparison> comparison_stack = new List<CraftingComparison>();
+        public static bool compare_liquid_unmixed_enabled;
+        public static bool compare_liquid_stacking_enabled;
+        public static bool compare_liquid_weight_enabled;
+
+        public static List<CraftingComparison> crafting_comparison_stack = new List<CraftingComparison>();
+        public static List<LiquidStorageComparison> liquid_comparisons_stack = new List<LiquidStorageComparison>();
         
         public void Awake() {
             instance = this;
@@ -34,6 +40,10 @@ namespace BalaurBohemianBroken {
             target = typeof(Recipe).GetMethod("GetItemsForRecipeThorough");
             patch = typeof(BetterInventoryLogic).GetMethod("PrefixGetItemsForRecipeThorough");
             harmony.Patch(target, prefix: new HarmonyMethod(patch));
+            
+            target = typeof(RecipeResult).GetMethod("SpawnResult");
+            patch = typeof(BetterInventoryLogic).GetMethod("PrefixSpawnResult");
+            harmony.Patch(target, prefix: new HarmonyMethod(patch));
 
             target = typeof(Settings).GetMethod("DefaultSettings");
             patch = typeof(BetterInventoryLogic).GetMethod("PostfixDefaultSettings");
@@ -44,29 +54,39 @@ namespace BalaurBohemianBroken {
             harmony.Patch(target, postfix: new HarmonyMethod(patch));
         }
 
-        private static void CreateComparisonStack() {
+        private static void CreateCraftingComparisonStack() {
             // TODO: Allow users to organize the stack themselves.
-            comparison_stack = new List<CraftingComparison>();
+            crafting_comparison_stack = new List<CraftingComparison>();
 
             if (compare_container_enabled) {
-                comparison_stack.Add(new CraftingCompareContainer(true));
+                crafting_comparison_stack.Add(new CraftingCompareContainer(true));
             }
             
             if (compare_wearable_enabled) {
-                comparison_stack.Add(new CraftingCompareWearable(true));
+                crafting_comparison_stack.Add(new CraftingCompareWearable(true));
             }
             
             if (compare_quality_enabled) {
-                comparison_stack.Add(new CraftingCompareQuality(false));
+                crafting_comparison_stack.Add(new CraftingCompareQuality(false));
             }
             
             if (compare_value_enabled) {
-                comparison_stack.Add(new CraftingCompareValue(true));
+                crafting_comparison_stack.Add(new CraftingCompareValue(true));
             }
             
             if (compare_condition_enabled) {
-                comparison_stack.Add(new CraftingCompareCondition(true));
+                crafting_comparison_stack.Add(new CraftingCompareCondition(true));
             }
+        }
+
+        private static void CreateLiquidComparisonsStack() {
+            liquid_comparisons_stack = new List<LiquidStorageComparison>();
+            if (compare_liquid_unmixed_enabled)
+                liquid_comparisons_stack.Add(new CompareLiquidUnmixed());
+            if (compare_liquid_stacking_enabled)
+                liquid_comparisons_stack.Add(new CompareLiquidStacking());
+            if (compare_liquid_weight_enabled)
+                liquid_comparisons_stack.Add(new CompareLiquidWeightRatio());
         }
         
         #region Patches
@@ -104,7 +124,7 @@ namespace BalaurBohemianBroken {
                     value = true,
                     apply = delegate {
                         BetterInventoryLogic.compare_container_enabled = Settings.Get<SettingBool>("compare_container_enabled").value;
-                        CreateComparisonStack();
+                        CreateCraftingComparisonStack();
                     },
                     category = Setting.SettingCategory.Game
                 },
@@ -113,7 +133,7 @@ namespace BalaurBohemianBroken {
                     value = true,
                     apply = delegate {
                         BetterInventoryLogic.compare_wearable_enabled = Settings.Get<SettingBool>("compare_wearable_enabled").value;
-                        CreateComparisonStack();
+                        CreateCraftingComparisonStack();
                     },
                     category = Setting.SettingCategory.Game
                 },
@@ -122,7 +142,7 @@ namespace BalaurBohemianBroken {
                     value = true,
                     apply = delegate {
                         BetterInventoryLogic.compare_quality_enabled = Settings.Get<SettingBool>("compare_quality_enabled").value;
-                        CreateComparisonStack();
+                        CreateCraftingComparisonStack();
                     },
                     category = Setting.SettingCategory.Game
                 },
@@ -131,7 +151,7 @@ namespace BalaurBohemianBroken {
                     value = true,
                     apply = delegate {
                         BetterInventoryLogic.compare_value_enabled = Settings.Get<SettingBool>("compare_value_enabled").value;
-                        CreateComparisonStack();
+                        CreateCraftingComparisonStack();
                     },
                     category = Setting.SettingCategory.Game
                 },
@@ -140,12 +160,100 @@ namespace BalaurBohemianBroken {
                     value = true,
                     apply = delegate {
                         BetterInventoryLogic.compare_condition_enabled = Settings.Get<SettingBool>("compare_condition_enabled").value;
-                        CreateComparisonStack();
+                        CreateCraftingComparisonStack();
+                    },
+                    category = Setting.SettingCategory.Game
+                },
+                
+                new SettingBool {
+                    name = "compare_liquid_unmixed_enabled",
+                    value = true,
+                    apply = delegate {
+                        BetterInventoryLogic.compare_liquid_unmixed_enabled = Settings.Get<SettingBool>("compare_liquid_unmixed_enabled").value;
+                        CreateLiquidComparisonsStack();
+                    },
+                    category = Setting.SettingCategory.Game
+                },
+                new SettingBool {
+                    name = "compare_liquid_stacking_enabled",
+                    value = true,
+                    apply = delegate {
+                        BetterInventoryLogic.compare_liquid_stacking_enabled = Settings.Get<SettingBool>("compare_liquid_stacking_enabled").value;
+                        CreateLiquidComparisonsStack();
+                    },
+                    category = Setting.SettingCategory.Game
+                },
+                new SettingBool {
+                    name = "compare_liquid_weight_enabled",
+                    value = true,
+                    apply = delegate {
+                        BetterInventoryLogic.compare_liquid_weight_enabled = Settings.Get<SettingBool>("compare_liquid_weight_enabled").value;
+                        CreateLiquidComparisonsStack();
                     },
                     category = Setting.SettingCategory.Game
                 },
             };
             __result.AddRange(my_settings);
+        }
+
+        public static bool PrefixSpawnResult(int recipeInt, RecipeResult __instance) {
+            // The is largely the same code from decomp, with a different storage logic placed in.
+            // I tossed up whether I wanted to do this, or whether I wanted to use a transpiler to patch it.
+            // In either case, if the code changes at all, I'd need to rewrite it.
+            //
+            // A transpiler might be more durable, as I'd just need to change where the hook starts.
+            // Plus, it also means I'm not potentially messing with other mods by skipping a function.
+            // But this is much faster to develop with.
+            // 
+            // If mod compatibility becomes an issue, I'll do a transpiler.
+
+            // TODO: Message that states where the crafted item was placed?
+            int num1 = PlayerCamera.main.body.skills.INT - recipeInt;
+            float crafted_condition = 1f;
+            if (num1 < 0 && Random.value < 0.5)
+            {
+              switch (num1)
+              {
+                case -3:
+                  Body body = PlayerCamera.main.body;
+                  body.DoGoreSound();
+                  for (int index = 5; index <= 8; index += 3)
+                  {
+                    body.limbs[index].pain += 40f;
+                    body.limbs[index].skinHealth -= 15f;
+                    body.limbs[index].bleedAmount += Random.Range(2f, 5f);
+                  }
+                  return false;
+                case -1:
+                  crafted_condition = Random.Range(0.2f, 0.9f);
+                  break;
+                default:
+                  return false;
+              }
+            }
+            for (int index = 0; index < __instance.amount; ++index)
+            {
+              if (__instance.isLiquid) {
+                  StoreCraftedLiquid(__instance, crafted_condition);
+                  return false;
+              }
+              else
+              {
+                Item component3 = Utils.Create(__instance.id, (Vector2) PlayerCamera.main.body.transform.position, 0.0f).GetComponent<Item>();
+                component3.condition = __instance.resultCondition * crafted_condition;
+                PlayerCamera.main.body.AutoPickUpItem(component3);
+                if ((bool) (Object) component3.battery)
+                  component3.battery.UnloadBattery(true);
+                WaterContainerItem component4;
+                if (!__instance.dontDrainResultLiquid && component3.TryGetComponent<WaterContainerItem>(out component4))
+                {
+                  component4.stack = new List<LiquidStack>();
+                  component3.condition = 0.0f;
+                }
+              }
+            }
+
+            return false;
         }
         #endregion
         
@@ -212,7 +320,7 @@ namespace BalaurBohemianBroken {
         }
 
         public static int CompareCraftingDesirability(Item x, Item y, RecipeItem recipe_slot) {
-            foreach (CraftingComparison comparison in comparison_stack) {
+            foreach (CraftingComparison comparison in crafting_comparison_stack) {
                 int comp_result = comparison.Compare(x, y, recipe_slot);
                 if (comp_result != 0)
                     return comp_result;
@@ -221,6 +329,63 @@ namespace BalaurBohemianBroken {
             return 0;
         }
         #endregion
+
+        public static void StoreCraftedLiquid(RecipeResult __instance, float condition) {
+            // Find suitable liquid containers.
+            var best_bottle = FindBestBottle(__instance.id, __instance.resultCondition * condition);
+            if (best_bottle != null) {
+                best_bottle.AddLiquid(__instance.id, __instance.resultCondition * condition);
+                return;
+            }
+            
+            // Create temp bottle.
+            GameObject gameObject = Utils.Create("craftingbottle", (Vector2) PlayerCamera.main.body.transform.position, 0.0f);
+            Item component = gameObject.GetComponent<Item>();
+            component.condition = __instance.resultCondition;
+            PlayerCamera.main.body.AutoPickUpItem(component);
+            double num4 = (double) component.GetComponent<WaterContainerItem>().AddLiquid(__instance.id, __instance.resultCondition * condition);
+            Object.Destroy((Object) gameObject, 300f);
+        }
+
+        public static WaterContainerItem FindBestBottle(string liquid_id, float liquid_amount) {
+            bool can_fill_new_bottles = true;
+            bool prefer_better_weight_ratio = true;
+            // TODO: These
+            // bool prefer_not_falling_from_inventory = true;
+            // bool prevent_falling_from_inventory = true;
+            
+            // TODO: Fill bottle, and move on to next bottle if there is any left over.
+            
+            List<WaterContainerItem> candidates = new List<WaterContainerItem>();
+            foreach (Item player_item in PlayerCamera.main.body.GetAllItemsThorough()) {
+                WaterContainerItem liquid_container;
+                if (!player_item.TryGetComponent<WaterContainerItem>(out liquid_container))
+                    continue;
+                if (liquid_container.SpaceLeft < liquid_amount)
+                    continue;
+                candidates.Add(liquid_container);
+            }
+
+            // Liquid logic:
+            candidates.Sort((x, y) => CompareLiquidContainerDesirability(x, y, liquid_id, liquid_amount));
+            return candidates.Last();
+        }
+        
+        public static int CompareLiquidContainerDesirability(WaterContainerItem x, WaterContainerItem y, string liquid_id, float amount) {
+            List<LiquidStorageComparison> comparisons = new List<LiquidStorageComparison>() {
+                new CompareLiquidUnmixed(),
+                new CompareLiquidStacking(),
+                new CompareLiquidWeightRatio(),
+            };
+            
+            foreach (LiquidStorageComparison comparison in comparisons) {
+                int comp_result = comparison.Compare(x, y, liquid_id, amount);
+                if (comp_result != 0)
+                    return comp_result;
+            }
+
+            return 0;
+        }
         
         private void StorageLogic() {
             // Store in container with type specification.
@@ -239,8 +404,8 @@ namespace BalaurBohemianBroken {
         }
     }
 
-    #region Comparison classes/methods
-    // I use an interface for this so that I can easily store and sort the methods in a list.
+    #region Crafting comparison classes/methods
+    // I use a class for this so that I can easily store and sort the methods in a list.
     public abstract class CraftingComparison {
         private bool _reverse = false;
         public bool Reverse {
@@ -253,7 +418,6 @@ namespace BalaurBohemianBroken {
             }
         }
         protected int reverse_sign = 1;  // Used in methods to invert the result if needed.
-        public int priority = 0;  // Used to order comparisons. Should find a better method.
         
         public CraftingComparison(bool reverse) {
             Reverse = reverse;
@@ -390,6 +554,56 @@ namespace BalaurBohemianBroken {
             if (ys.wearable)
                 return -1 * reverse_sign;
             return 0;
+        }
+    }
+    #endregion
+    
+    #region Storage comparison classes
+    
+    // I use a class for this so that I can easily store and sort the methods in a list.
+    public abstract class LiquidStorageComparison {
+        public abstract int Compare(WaterContainerItem x, WaterContainerItem y, string liquid_id, float quantity);
+    }
+
+    public class CompareLiquidStacking : LiquidStorageComparison {
+        public override int Compare(WaterContainerItem x, WaterContainerItem y, string liquid_id, float quantity) {
+            float x_amount = x.AmountOf(liquid_id);
+            float y_amount = y.AmountOf(liquid_id);
+            return x_amount.CompareTo(y_amount);
+        }
+    }
+
+    public class CompareLiquidWeightRatio : LiquidStorageComparison {
+        public override int Compare(WaterContainerItem x, WaterContainerItem y, string liquid_id, float quantity) {
+            // Which container is going to increase our weight the least by stacking in to it?
+            // This doesn't account for containers that don't scale their weight.
+            // The reasoning for this is that a container with a lower ratio of weight when filled is always more desirable.
+            // e.g. filling a canteen doesn't increase your weight at all, but canteens are pretty mediocre liquid storage.
+            FieldInfo field_info = typeof(WaterContainerItem).GetField("item", BindingFlags.NonPublic | BindingFlags.Instance);
+            
+            Item x_item = (Item)field_info.GetValue(x);
+            float x_max_weight = x_item.Stats.weight;
+            float x_weight_per_capacity = x_max_weight / x.Capacity;
+            
+            Item y_item = (Item)field_info.GetValue(y);
+            float y_max_weight = y_item.Stats.weight;
+            float y_weight_per_capacity = y_max_weight / y.Capacity;
+
+            // Inverted because lower value is more desirable.
+            return x_weight_per_capacity.CompareTo(y_weight_per_capacity) * -1;
+        }
+    }
+
+    public class CompareLiquidUnmixed : LiquidStorageComparison {
+        public override int Compare(WaterContainerItem x, WaterContainerItem y, string liquid_id, float quantity) {
+            int x_unmatched_liquids = x.stack.Count;
+            int y_unmatched_liquids = y.stack.Count;
+            if (x.HasLiquid(liquid_id))
+                x_unmatched_liquids--;
+            if (y.HasLiquid(liquid_id))
+                y_unmatched_liquids--;
+            
+            return x_unmatched_liquids.CompareTo(y_unmatched_liquids) * -1;
         }
     }
     #endregion
