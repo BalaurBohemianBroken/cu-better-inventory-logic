@@ -48,6 +48,7 @@ namespace BalaurBohemianBroken {
     public class Patch_DefaultSettings {
         public static void Postfix(List<Setting> __result) {
             List<Setting> my_settings = new List<Setting> {
+                #region Crafting comparison
                 new SettingBool {
                     name = "compare_container_enabled",
                     value = true,
@@ -98,7 +99,8 @@ namespace BalaurBohemianBroken {
                     },
                     category = Setting.SettingCategory.Game
                 },
-
+                #endregion
+                #region Liquid storage comparison
                 new SettingBool {
                     name = "compare_liquid_unmixed_enabled",
                     value = true,
@@ -129,6 +131,69 @@ namespace BalaurBohemianBroken {
                     },
                     category = Setting.SettingCategory.Game
                 },
+                #endregion
+                #region Storage comparison
+                new SettingBool {
+                    name = "store_in_containers_first",
+                    value = true,
+                    apply = delegate {
+                        InventoryLogic.store_in_containers_first =
+                            Settings.Get<SettingBool>("store_in_containers_first").value;
+                        // InventoryLogic.CreateStorageComparisonStack();
+                    },
+                    category = Setting.SettingCategory.Game
+                },
+                new SettingBool {
+                    name = "compare_storage_type",
+                    value = true,
+                    apply = delegate {
+                        InventoryLogic.compare_storage_type =
+                            Settings.Get<SettingBool>("compare_storage_type").value;
+                        InventoryLogic.CreateStorageComparisonStack();
+                    },
+                    category = Setting.SettingCategory.Game
+                },
+                new SettingBool {
+                    name = "compare_storage_reduction",
+                    value = true,
+                    apply = delegate {
+                        InventoryLogic.compare_storage_reduction =
+                            Settings.Get<SettingBool>("compare_storage_reduction").value;
+                        InventoryLogic.CreateStorageComparisonStack();
+                    },
+                    category = Setting.SettingCategory.Game
+                },
+                new SettingBool {
+                    name = "compare_storage_full",
+                    value = true,
+                    apply = delegate {
+                        InventoryLogic.compare_storage_full =
+                            Settings.Get<SettingBool>("compare_storage_full").value;
+                        InventoryLogic.CreateStorageComparisonStack();
+                    },
+                    category = Setting.SettingCategory.Game
+                },
+                new SettingBool {
+                    name = "compare_storage_capacity",
+                    value = true,
+                    apply = delegate {
+                        InventoryLogic.compare_storage_capacity =
+                            Settings.Get<SettingBool>("compare_storage_capacity").value;
+                        InventoryLogic.CreateStorageComparisonStack();
+                    },
+                    category = Setting.SettingCategory.Game
+                },
+                new SettingBool {
+                    name = "compare_storage_best_condition",
+                    value = true,
+                    apply = delegate {
+                        InventoryLogic.compare_storage_best_condition =
+                            Settings.Get<SettingBool>("compare_storage_best_condition").value;
+                        InventoryLogic.CreateStorageComparisonStack();
+                    },
+                    category = Setting.SettingCategory.Game
+                },
+                #endregion
             };
             __result.AddRange(my_settings);
         }
@@ -173,8 +238,21 @@ namespace BalaurBohemianBroken {
 
             for (int index = 0; index < __instance.amount; ++index) {
                 if (__instance.isLiquid) {
-                    InventoryLogic.StoreCraftedLiquid(__instance, crafted_condition);
-                    return false;
+                    // TODO: This is the only part of code that is changed! I can do this easily with a transpiler.
+                    string item_id = __instance.id;
+                    float amount = __instance.resultCondition * crafted_condition;
+                    bool try_store = InventoryLogic.StoreLiquid(__instance.id, __instance.resultCondition * crafted_condition);
+            
+                    // Create temp bottle.
+                    if (!try_store) {
+                        GameObject gameObject = Utils.Create("craftingbottle",
+                            (Vector2)PlayerCamera.main.body.transform.position, 0.0f);
+                        Item component = gameObject.GetComponent<Item>();
+                        component.condition = __instance.resultCondition;
+                        PlayerCamera.main.body.AutoPickUpItem(component);
+                        double num4 = (double)component.GetComponent<WaterContainerItem>().AddLiquid(item_id, amount);
+                        Object.Destroy((Object)gameObject, 300f);
+                    }
                 }
                 else {
                     Item component3 = Utils
@@ -193,6 +271,29 @@ namespace BalaurBohemianBroken {
                 }
             }
 
+            return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(Body))]
+    [HarmonyPatch(nameof(Body.AutoPickUpItem))]
+    public class Patch_AutoPickUpItem {
+        public static bool Prefix(Item item, Body __instance) {
+            if (item.Stats.HasTag("noautopickup"))
+                return false;
+            if (!item.Stats.wearable)
+            {
+                // TODO: This is the only part of this code I change. I could transpile this.
+                InventoryLogic.PickUpItem(item);
+            }
+            else
+            {
+                Item wearableBySlotId = __instance.GetWearableBySlotID(item.Stats.wearSlotId);
+                if ((bool) (UnityEngine.Object) wearableBySlotId)
+                    __instance.DropItem(wearableBySlotId);
+                __instance.WearWearable(item);
+                PlayerCamera.main.UpdateWearables();
+            }
             return false;
         }
     }

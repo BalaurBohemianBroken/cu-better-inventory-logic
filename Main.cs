@@ -8,7 +8,7 @@ using System.Linq;
 // TODO: This likely is incompatible with QoL. I need to test and report.
 // TODO: Make crafting status update after properly crafting stuff.
 namespace BalaurBohemianBroken {
-    [BepInPlugin("com.balaur.BetterLogic", "BetterInventoryLogic", "0.1.3")]
+    [BepInPlugin("com.balaur.BetterLogic", "BetterInventoryLogic", "0.1.4")]
     public class BetterInventoryLogic : BaseUnityPlugin {
         public static BetterInventoryLogic instance;
         
@@ -18,16 +18,16 @@ namespace BalaurBohemianBroken {
             harmony.PatchAll();
         }
         
-        // TODO: I get a lag spike when crafting. I suspect it comes from the game's RecipeItem.GetMatchingItem.
+        // TODO: I get a lag spike when crafting. I suspect it comes from the game's RecipeItem.GetMatchingItem being called multiple times.
         public static List<Item> CraftingLogic(Recipe __instance, bool stop_on_null) {
             // TODO: Click on an item in the crafting window to tell recipe to not use it.
             
-            // This finding code is largely from Recipe.GetItemsForRecipe
-            HashSet<Item> itemsForRecipe = new HashSet<Item>();
-            HashSet<Item> allItemsThorough = InventoryLogic.GetAvailableItems(true).ToHashSet();
+            // This finding code is largely from Recipe.GetItemsForRecipeThorough
+            List<Item> itemsForRecipe = new List<Item>();  // This needs to be List, because the Thorough version of the function uses null to signify no available item.
+            List<Item> allItemsThorough = InventoryLogic.GetAvailableItems(true);
             
             // Remove favourited items.
-            allItemsThorough.RemoveWhere(item => item.favourited);
+            allItemsThorough.RemoveAll(item => item.favourited);
             
             // Go through each recipe item in order, and try to find the best item for that slot.
             foreach (RecipeItem recipe_item in __instance.items) {
@@ -44,17 +44,10 @@ namespace BalaurBohemianBroken {
                 }
             }
 
-            return itemsForRecipe.ToList();
+            return itemsForRecipe;
         }
         
-        private void StorageLogic() {
-            // Store in container with type specification.
-            // Store in container with highest reduction.
-            // Store in most full container.
-            // Store in highest durability container.
-            // Store in first container.
-        }
-
+        // TODO: Drop all button for container?
         private void SortingLogic() {
             // Sort by weight
             // Sort by value
