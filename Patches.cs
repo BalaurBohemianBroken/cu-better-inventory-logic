@@ -8,7 +8,7 @@ namespace BalaurBohemianBroken {
     [HarmonyPatch(nameof(Recipe.GetItemsForRecipe))]
     public class Patch_GetItemsForRecipe {
         public static bool Prefix(Recipe __instance, ref List<Item> __result) {
-            __result = BetterInventoryLogic.CraftingLogic(__instance, true);
+            __result = CraftingLogic.GetItemsForRecipe(__instance, true);
             return false;
         }
     }
@@ -17,7 +17,7 @@ namespace BalaurBohemianBroken {
     [HarmonyPatch(nameof(Recipe.GetItemsForRecipeThorough))]
     public class Patch_GetItemsForRecipeThorough {
         public static bool Prefix(Recipe __instance, ref List<Item> __result) {
-            __result = BetterInventoryLogic.CraftingLogic(__instance, false);
+            __result = CraftingLogic.GetItemsForRecipe(__instance, false);
             return false;
         }
     }
@@ -26,20 +26,51 @@ namespace BalaurBohemianBroken {
     [HarmonyPatch(nameof(Locale.LoadLanguage))]
     public class Patch_LoadLanguage {
         public static void Postfix() {
-            Locale.currentLang.other.Add("gamesetcompare_container_enabled", "Compare container");
-            Locale.currentLang.other.Add("gamesetcompare_container_enableddsc", "Use containers later.");
-        
-            Locale.currentLang.other.Add("gamesetcompare_wearable_enabled", "Compare wearable");
-            Locale.currentLang.other.Add("gamesetcompare_wearable_enableddsc", "Use wearables later.");
-        
-            Locale.currentLang.other.Add("gamesetcompare_quality_enabled", "Compare quality");
-            Locale.currentLang.other.Add("gamesetcompare_quality_enableddsc", "Use items of lower quality, like lower hammering, later.");
-        
-            Locale.currentLang.other.Add("gamesetcompare_value_enabled", "Compare value");
-            Locale.currentLang.other.Add("gamesetcompare_value_enableddsc", "Use items of higher trading value later.");
-        
-            Locale.currentLang.other.Add("gamesetcompare_condition_enabled", "Compare condition");
-            Locale.currentLang.other.Add("gamesetcompare_condition_enableddsc", "Use items with higher condition later.");
+            Dictionary<string, string> lines = new Dictionary<string, string> {
+                #region Crafting settings
+                {"gamesetcompare_container_enabled", "<color=purple>Crafting</color>: Prefer not containers"},
+                {"gamesetcompare_container_enableddsc", "Use containers later."},
+                {"gamesetcompare_wearable_enabled", "<color=purple>Crafting</color>: Prefer not wearables"},
+                {"gamesetcompare_wearable_enableddsc", "Use wearables later."},
+                {"gamesetcompare_quality_enabled", "<color=purple>Crafting</color>: Prefer higher quality"},
+                {"gamesetcompare_quality_enableddsc", "Use items of lower quality, like lower hammering, later."},
+                {"gamesetcompare_value_enabled", "<color=purple>Crafting</color>: Prefer lower value"},
+                {"gamesetcompare_value_enableddsc", "Use items of higher trading value later."},
+                {"gamesetcompare_condition_enabled", "<color=purple>Crafting</color>: Prefer lower condition"},
+                {"gamesetcompare_condition_enableddsc", "Use items with higher condition later."},
+                #endregion
+                #region Autopickup rules
+                {"gamesetliquids_can_mix", "<color=purple>Storage (Liquid)</color>: Allow liquids to mix"},
+                {"gamesetliquids_can_mixdsc", "Allows liquids to fill containers that already have liquids if nowhere else is suitable. Use 'Prefer liquids unmixed' to make it a last resort."},
+                {"gamesetliquids_can_fill_new_bottles", "<color=purple>Storage (Liquid)</color>: Allow filling new bottles"},
+                {"gamesetliquids_can_fill_new_bottlesdsc", "Allow liquids to fill bottles that are empty."},
+
+                {"gamesetcompare_liquid_unmixed_enabled", "<color=purple>Storage (Liquid)</color>: Prefer liquids unmixed"},
+                {"gamesetcompare_liquid_unmixed_enableddsc", "If 'Allow liquids to mix' is enabled, fill containers with the fewest different liquids. Mixing is a last resort."},
+                {"gamesetcompare_liquid_stacking_enabled", "<color=purple>Storage (Liquid)</color>: Prefer liquid stack"},
+                {"gamesetcompare_liquid_stacking_enableddsc", "Fill containers that have the highest amount of this liquid first."},
+                {"gamesetcompare_liquid_weight_enabled", "<color=purple>Storage (Liquid)</color>: Prefer low weight liquid containers"},
+                {"gamesetcompare_liquid_weight_enableddsc", "Prefer containers that have the lowest weight to highest liquid ratio when full."},
+                
+                {"gamesetstore_in_containers_first", "<color=purple>Storage</color>: Store in containers first"},
+                {"gamesetstore_in_containers_firstdsc", "Put crafted items into containers first, rather than in hands/mouth/back"},
+
+                {"gamesetcompare_storage_type", "<color=purple>Storage</color>: Prefer matched container type"},
+                {"gamesetcompare_storage_typedsc", "When storing crafted items, choose containers specific to this item type, such as the material pouch for materials."},
+                {"gamesetcompare_storage_reduction", "<color=purple>Storage</color>: Prefer higher container reduction"},
+                {"gamesetcompare_storage_reductiondsc", "When storing crafted items, prefer containers that have a better encumbrance reduction."},
+                {"gamesetcompare_storage_full", "<color=purple>Storage</color>: Prefer fuller container"},
+                {"gamesetcompare_storage_fulldsc", "When storing crafted items, prefer containers that are more full."},
+                {"gamesetcompare_storage_capacity", "<color=purple>Storage</color>: Prefer larger containers"},
+                {"gamesetcompare_storage_capacitydsc", "When storing crafted items, prefer containers that are more larger."},
+                {"gamesetcompare_storage_best_condition", "<color=purple>Storage</color>: Prefer best condition container"},
+                {"gamesetcompare_storage_best_conditiondsc", "When storing crafted items, prefer containers that have higher condition."},
+                #endregion
+            };
+
+            foreach (KeyValuePair<string, string> line in lines) {
+                Locale.currentLang.other.Add(line.Key, line.Value);
+            } 
         }
     }
 
@@ -47,155 +78,9 @@ namespace BalaurBohemianBroken {
     [HarmonyPatch(nameof(Settings.DefaultSettings))]
     public class Patch_DefaultSettings {
         public static void Postfix(List<Setting> __result) {
-            List<Setting> my_settings = new List<Setting> {
-                #region Crafting comparison
-                new SettingBool {
-                    name = "compare_container_enabled",
-                    value = true,
-                    apply = delegate {
-                        InventoryLogic.compare_container_enabled =
-                            Settings.Get<SettingBool>("compare_container_enabled").value;
-                        InventoryLogic.CreateCraftingComparisonStack();
-                    },
-                    category = Setting.SettingCategory.Game
-                },
-                new SettingBool {
-                    name = "compare_wearable_enabled",
-                    value = true,
-                    apply = delegate {
-                        InventoryLogic.compare_wearable_enabled =
-                            Settings.Get<SettingBool>("compare_wearable_enabled").value;
-                        InventoryLogic.CreateCraftingComparisonStack();
-                    },
-                    category = Setting.SettingCategory.Game
-                },
-                new SettingBool {
-                    name = "compare_quality_enabled",
-                    value = true,
-                    apply = delegate {
-                        InventoryLogic.compare_quality_enabled =
-                            Settings.Get<SettingBool>("compare_quality_enabled").value;
-                        InventoryLogic.CreateCraftingComparisonStack();
-                    },
-                    category = Setting.SettingCategory.Game
-                },
-                new SettingBool {
-                    name = "compare_value_enabled",
-                    value = true,
-                    apply = delegate {
-                        InventoryLogic.compare_value_enabled =
-                            Settings.Get<SettingBool>("compare_value_enabled").value;
-                        InventoryLogic.CreateCraftingComparisonStack();
-                    },
-                    category = Setting.SettingCategory.Game
-                },
-                new SettingBool {
-                    name = "compare_condition_enabled",
-                    value = true,
-                    apply = delegate {
-                        InventoryLogic.compare_condition_enabled =
-                            Settings.Get<SettingBool>("compare_condition_enabled").value;
-                        InventoryLogic.CreateCraftingComparisonStack();
-                    },
-                    category = Setting.SettingCategory.Game
-                },
-                #endregion
-                #region Liquid storage comparison
-                new SettingBool {
-                    name = "compare_liquid_unmixed_enabled",
-                    value = true,
-                    apply = delegate {
-                        InventoryLogic.compare_liquid_unmixed_enabled =
-                            Settings.Get<SettingBool>("compare_liquid_unmixed_enabled").value;
-                        InventoryLogic.CreateLiquidComparisonsStack();
-                    },
-                    category = Setting.SettingCategory.Game
-                },
-                new SettingBool {
-                    name = "compare_liquid_stacking_enabled",
-                    value = true,
-                    apply = delegate {
-                        InventoryLogic.compare_liquid_stacking_enabled =
-                            Settings.Get<SettingBool>("compare_liquid_stacking_enabled").value;
-                        InventoryLogic.CreateLiquidComparisonsStack();
-                    },
-                    category = Setting.SettingCategory.Game
-                },
-                new SettingBool {
-                    name = "compare_liquid_weight_enabled",
-                    value = true,
-                    apply = delegate {
-                        InventoryLogic.compare_liquid_weight_enabled =
-                            Settings.Get<SettingBool>("compare_liquid_weight_enabled").value;
-                        InventoryLogic.CreateLiquidComparisonsStack();
-                    },
-                    category = Setting.SettingCategory.Game
-                },
-                #endregion
-                #region Storage comparison
-                new SettingBool {
-                    name = "store_in_containers_first",
-                    value = true,
-                    apply = delegate {
-                        InventoryLogic.store_in_containers_first =
-                            Settings.Get<SettingBool>("store_in_containers_first").value;
-                        // InventoryLogic.CreateStorageComparisonStack();
-                    },
-                    category = Setting.SettingCategory.Game
-                },
-                new SettingBool {
-                    name = "compare_storage_type",
-                    value = true,
-                    apply = delegate {
-                        InventoryLogic.compare_storage_type =
-                            Settings.Get<SettingBool>("compare_storage_type").value;
-                        InventoryLogic.CreateStorageComparisonStack();
-                    },
-                    category = Setting.SettingCategory.Game
-                },
-                new SettingBool {
-                    name = "compare_storage_reduction",
-                    value = true,
-                    apply = delegate {
-                        InventoryLogic.compare_storage_reduction =
-                            Settings.Get<SettingBool>("compare_storage_reduction").value;
-                        InventoryLogic.CreateStorageComparisonStack();
-                    },
-                    category = Setting.SettingCategory.Game
-                },
-                new SettingBool {
-                    name = "compare_storage_full",
-                    value = true,
-                    apply = delegate {
-                        InventoryLogic.compare_storage_full =
-                            Settings.Get<SettingBool>("compare_storage_full").value;
-                        InventoryLogic.CreateStorageComparisonStack();
-                    },
-                    category = Setting.SettingCategory.Game
-                },
-                new SettingBool {
-                    name = "compare_storage_capacity",
-                    value = true,
-                    apply = delegate {
-                        InventoryLogic.compare_storage_capacity =
-                            Settings.Get<SettingBool>("compare_storage_capacity").value;
-                        InventoryLogic.CreateStorageComparisonStack();
-                    },
-                    category = Setting.SettingCategory.Game
-                },
-                new SettingBool {
-                    name = "compare_storage_best_condition",
-                    value = true,
-                    apply = delegate {
-                        InventoryLogic.compare_storage_best_condition =
-                            Settings.Get<SettingBool>("compare_storage_best_condition").value;
-                        InventoryLogic.CreateStorageComparisonStack();
-                    },
-                    category = Setting.SettingCategory.Game
-                },
-                #endregion
-            };
-            __result.AddRange(my_settings);
+            __result.AddRange(CraftingLogic.settings);
+            __result.AddRange(StorageLogic.settings);
+            __result.AddRange(LiquidStorageLogic.settings);
         }
     }
 
@@ -213,7 +98,6 @@ namespace BalaurBohemianBroken {
             // 
             // If mod compatibility becomes an issue, I'll do a transpiler.
 
-            // TODO: Message that states where the crafted item was placed?
             int num1 = PlayerCamera.main.body.skills.INT - recipeInt;
             float crafted_condition = 1f;
             if (num1 < 0 && Random.value < 0.5) {
@@ -241,7 +125,7 @@ namespace BalaurBohemianBroken {
                     // TODO: This is the only part of code that is changed! I can do this easily with a transpiler.
                     string item_id = __instance.id;
                     float amount = __instance.resultCondition * crafted_condition;
-                    bool try_store = InventoryLogic.StoreLiquid(__instance.id, __instance.resultCondition * crafted_condition);
+                    bool try_store = LiquidStorageLogic.StoreLiquid(__instance.id, __instance.resultCondition * crafted_condition);
             
                     // Create temp bottle.
                     if (!try_store) {
@@ -284,7 +168,7 @@ namespace BalaurBohemianBroken {
             if (!item.Stats.wearable)
             {
                 // TODO: This is the only part of this code I change. I could transpile this.
-                InventoryLogic.PickUpItem(item);
+                StorageLogic.PickUpItem(item);
             }
             else
             {

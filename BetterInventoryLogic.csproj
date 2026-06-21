@@ -3,7 +3,8 @@
     <PropertyGroup>
         <TargetFramework>netstandard2.1</TargetFramework>
         <Nullable>disable</Nullable>
-        <RootNamespace>BetterCraftingLogic</RootNamespace>
+        <RootNamespace>BalaurBohemianBroken</RootNamespace>
+        <AssemblyName>CraftingLogic</AssemblyName>
     </PropertyGroup>
 
     <ItemGroup>
@@ -30,7 +31,7 @@
     </ItemGroup>
 
     <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-      <Exec Command="cp &quot;/mnt/NASPrivate/Work/Programming/CasualtiesUnknown/BetterInventoryLogic/bin/Debug/netstandard2.1/BetterInventoryLogic.dll&quot; &quot;/home/will/.local/share/Steam/steamapps/common/Casualties Unknown Demo/BepInEx/plugins/BetterInventoryLogic.dll&quot;" />
+      <Exec Command="cp &quot;/mnt/NASPrivate/Work/Programming/CasualtiesUnknown/BetterInventoryLogic/bin/Debug/netstandard2.1/CraftingLogic.dll&quot; &quot;/home/will/.local/share/Steam/steamapps/common/Casualties Unknown Demo/BepInEx/plugins/CraftingLogic.dll&quot;" />
     </Target>
 
 </Project>
