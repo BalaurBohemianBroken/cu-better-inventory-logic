@@ -4,14 +4,13 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-// TODO: This likely is incompatible with QoL. I need to test and report.
 // TODO: Make crafting status update after properly crafting stuff.
 // TODO: Click on an item in the crafting window to tell recipe to not use it.
 // TODO: For liquids, I should choose to craft with mixed liquids first.
 // TODO: Option to use things not in inventory first.
 // TODO: Allow users to organize the stack themselves.
 // TODO: Message that states where the crafted item was placed?
-// TODO: Fill bottle, and move on to next bottle if there is any left over.
+// TODO: Fill bottle, and move on to next bottle i  f there is any left over.
 // TODO: Allow recipes to use filled containers.
 namespace BalaurBohemianBroken {
     [BepInPlugin("com.balaur.BetterLogic", "BetterInventoryLogic", "1.0.0")]
