@@ -20,7 +20,7 @@ using UnityEngine;
 // TODO: Show item condition in preview menu. Hover text for item.
 // TODO: Craft multiple.
 namespace BalaurBohemianBroken {
-    [BepInPlugin("com.balaur.BetterLogic", "BetterInventoryLogic", "1.0.3")]
+    [BepInPlugin("com.balaur.BetterLogic", "BetterInventoryLogic", "1.0.4")]
     public class BetterInventoryLogic : BaseUnityPlugin {
         public static BetterInventoryLogic instance;
         

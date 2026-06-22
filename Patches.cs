@@ -44,13 +44,13 @@ namespace BalaurBohemianBroken {
                 {"gamesetprefer_low_conditiondsc", "Use items with higher condition later."},
                 #endregion
                 #region Autopickup rules
-                {"gamesetliquids_can_mix", "<color=purple>Storage (Liquid)</color>: Allow liquids to mix"},
-                {"gamesetliquids_can_mixdsc", "Allows liquids to fill containers that already have liquids if nowhere else is suitable. Use 'Prefer liquids unmixed' to make it a last resort."},
+                {"gamesetliquids_can_mix", "<color=purple>Storage (Liquid)</color>: Allow stacking into mixed"},
+                {"gamesetliquids_can_mixdsc", "Allow a pouring this liquid into a bottle that has other liquids, only if it already has some of this liquid."},
                 {"gamesetliquids_can_fill_new_bottles", "<color=purple>Storage (Liquid)</color>: Allow filling new bottles"},
                 {"gamesetliquids_can_fill_new_bottlesdsc", "Allow liquids to fill bottles that are empty."},
 
                 {"gamesetcompare_liquid_unmixed_enabled", "<color=purple>Storage (Liquid)</color>: Prefer liquids unmixed"},
-                {"gamesetcompare_liquid_unmixed_enableddsc", "If 'Allow liquids to mix' is enabled, fill containers with the fewest different liquids. Mixing is a last resort."},
+                {"gamesetcompare_liquid_unmixed_enableddsc", "If 'Allow liquids to mix' is enabled, fill containers with the fewest different liquids."},
                 {"gamesetcompare_liquid_stacking_enabled", "<color=purple>Storage (Liquid)</color>: Prefer liquid stack"},
                 {"gamesetcompare_liquid_stacking_enableddsc", "Fill containers that have the highest amount of this liquid first."},
                 {"gamesetcompare_liquid_weight_enabled", "<color=purple>Storage (Liquid)</color>: Prefer low weight liquid containers"},

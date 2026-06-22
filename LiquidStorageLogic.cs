@@ -3,19 +3,19 @@ using System.Linq;
 
 namespace BalaurBohemianBroken {
     public class LiquidStorageLogic {
-        public static bool liquids_can_fill_new_bottles = true;
-        public static bool liquids_can_mix = false;
+        public static bool can_fill_new_bottles;
+        public static bool can_stack_into_mixed;
         public static List<LiquidStorageComparison> liquid_comparisons_stack = new List<LiquidStorageComparison>();
-        public static bool compare_liquid_unmixed_enabled;
-        public static bool compare_liquid_stacking_enabled;
-        public static bool compare_liquid_weight_enabled;
+        public static bool prefer_unmixed;
+        public static bool prefer_larger_stack;
+        public static bool prefer_better_weight_ratio;
 
         public static List<Setting> settings = new List<Setting>() {
             new SettingBool {
                 name = "liquids_can_fill_new_bottles",
                 value = true,
                 apply = delegate {
-                    liquids_can_fill_new_bottles =
+                    can_fill_new_bottles =
                         Settings.Get<SettingBool>("liquids_can_fill_new_bottles").value;
                     CreateLiquidComparisonsStack();
                 },
@@ -25,7 +25,7 @@ namespace BalaurBohemianBroken {
                 name = "liquids_can_mix",
                 value = false,
                 apply = delegate {
-                    liquids_can_mix =
+                    can_stack_into_mixed =
                         Settings.Get<SettingBool>("liquids_can_mix").value;
                     CreateLiquidComparisonsStack();
                 },
@@ -35,7 +35,7 @@ namespace BalaurBohemianBroken {
                 name = "compare_liquid_unmixed_enabled",
                 value = true,
                 apply = delegate {
-                    compare_liquid_unmixed_enabled =
+                    prefer_unmixed =
                         Settings.Get<SettingBool>("compare_liquid_unmixed_enabled").value;
                     CreateLiquidComparisonsStack();
                 },
@@ -45,7 +45,7 @@ namespace BalaurBohemianBroken {
                 name = "compare_liquid_stacking_enabled",
                 value = true,
                 apply = delegate {
-                    compare_liquid_stacking_enabled =
+                    prefer_larger_stack =
                         Settings.Get<SettingBool>("compare_liquid_stacking_enabled").value;
                     CreateLiquidComparisonsStack();
                 },
@@ -55,7 +55,7 @@ namespace BalaurBohemianBroken {
                 name = "compare_liquid_weight_enabled",
                 value = true,
                 apply = delegate {
-                    compare_liquid_weight_enabled =
+                    prefer_better_weight_ratio =
                         Settings.Get<SettingBool>("compare_liquid_weight_enabled").value;
                     CreateLiquidComparisonsStack();
                 },
@@ -65,11 +65,11 @@ namespace BalaurBohemianBroken {
         
         public static void CreateLiquidComparisonsStack() {
             liquid_comparisons_stack = new List<LiquidStorageComparison>();
-            if (compare_liquid_unmixed_enabled && liquids_can_mix)
+            if (prefer_unmixed && can_stack_into_mixed)
                 liquid_comparisons_stack.Add(new CompareLiquidUnmixed());
-            if (compare_liquid_stacking_enabled)
+            if (prefer_larger_stack)
                 liquid_comparisons_stack.Add(new CompareLiquidStacking());
-            if (compare_liquid_weight_enabled)
+            if (prefer_better_weight_ratio)
                 liquid_comparisons_stack.Add(new CompareLiquidWeightRatio());
         }
 
@@ -91,15 +91,21 @@ namespace BalaurBohemianBroken {
                     continue;
                 if (liquid_container.SpaceLeft < liquid_amount)
                     continue;
-                if (!liquids_can_fill_new_bottles && liquid_container.CurrentTotal == 0)
+                if (!can_fill_new_bottles && liquid_container.CurrentTotal == 0)
                     continue;
 
-                if (!liquids_can_mix) {
-                    int matched_liquid = liquid_container.HasLiquid(liquid_id) ? 1 : 0;
-                    int other_liquids = liquid_container.stack.Count() - matched_liquid;
-                    if (other_liquids > 0)
+                bool has_stack = liquid_container.HasLiquid(liquid_id);
+                int other_liquids = liquid_container.stack.Count();
+                if (has_stack)
+                    other_liquids -= 1;
+
+                if (other_liquids > 0) {
+                    if (!can_stack_into_mixed)
+                        continue;
+                    if (!has_stack)
                         continue;
                 }
+                    
                 candidates.Add(liquid_container);
             }
 
