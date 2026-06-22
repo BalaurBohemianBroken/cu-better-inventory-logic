@@ -13,7 +13,7 @@ using UnityEngine;
 // TODO: Fill bottle, and move on to next bottle if there is any left over.
 // TODO: Allow recipes to use filled containers.
 namespace BalaurBohemianBroken {
-    [BepInPlugin("com.balaur.BetterLogic", "BetterInventoryLogic", "1.0.0")]
+    [BepInPlugin("com.balaur.BetterLogic", "BetterInventoryLogic", "1.0.1")]
     public class BetterInventoryLogic : BaseUnityPlugin {
         public static BetterInventoryLogic instance;
         
