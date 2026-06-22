@@ -10,7 +10,7 @@ using UnityEngine;
 // TODO: Option to use things not in inventory first.
 // TODO: Allow users to organize the stack themselves.
 // TODO: Message that states where the crafted item was placed?
-// TODO: Fill bottle, and move on to next bottle i  f there is any left over.
+// TODO: Fill bottle, and move on to next bottle if there is any left over.
 // TODO: Allow recipes to use filled containers.
 namespace BalaurBohemianBroken {
     [BepInPlugin("com.balaur.BetterLogic", "BetterInventoryLogic", "1.0.0")]

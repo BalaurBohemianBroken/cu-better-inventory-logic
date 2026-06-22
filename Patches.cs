@@ -133,7 +133,7 @@ namespace BalaurBohemianBroken {
                             (Vector2)PlayerCamera.main.body.transform.position, 0.0f);
                         Item component = gameObject.GetComponent<Item>();
                         component.condition = __instance.resultCondition;
-                        PlayerCamera.main.body.AutoPickUpItem(component);
+                        StorageLogic.AutoPickup(component, PlayerCamera.main.body);  // This code is changed.
                         double num4 = (double)component.GetComponent<WaterContainerItem>().AddLiquid(item_id, amount);
                         Object.Destroy((Object)gameObject, 300f);
                     }
@@ -143,7 +143,7 @@ namespace BalaurBohemianBroken {
                         .Create(__instance.id, (Vector2)PlayerCamera.main.body.transform.position, 0.0f)
                         .GetComponent<Item>();
                     component3.condition = __instance.resultCondition * crafted_condition;
-                    PlayerCamera.main.body.AutoPickUpItem(component3);
+                    StorageLogic.AutoPickup(component3, PlayerCamera.main.body);  // This code is changed.
                     if ((bool)(Object)component3.battery)
                         component3.battery.UnloadBattery(true);
                     WaterContainerItem component4;
@@ -155,29 +155,6 @@ namespace BalaurBohemianBroken {
                 }
             }
 
-            return false;
-        }
-    }
-
-    [HarmonyPatch(typeof(Body))]
-    [HarmonyPatch(nameof(Body.AutoPickUpItem))]
-    public class Patch_AutoPickUpItem {
-        public static bool Prefix(Item item, Body __instance) {
-            if (item.Stats.HasTag("noautopickup"))
-                return false;
-            if (!item.Stats.wearable)
-            {
-                // TODO: This is the only part of this code I change. I could transpile this.
-                StorageLogic.PickUpItem(item);
-            }
-            else
-            {
-                Item wearableBySlotId = __instance.GetWearableBySlotID(item.Stats.wearSlotId);
-                if ((bool) (UnityEngine.Object) wearableBySlotId)
-                    __instance.DropItem(wearableBySlotId);
-                __instance.WearWearable(item);
-                PlayerCamera.main.UpdateWearables();
-            }
             return false;
         }
     }

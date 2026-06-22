@@ -74,8 +74,27 @@ namespace BalaurBohemianBroken {
                 category = Setting.SettingCategory.Game
             },
         };
+
+        public static void AutoPickup(Item item, Body character) {
+            // Based on Body.AutoPickUpItem
+            if (item.Stats.HasTag("noautopickup"))
+                return;
+            if (!item.Stats.wearable)
+            {
+                // TODO: This is the only part of this code I change. I could transpile this.
+                StorageLogic.AddItemToInventory(item);
+            }
+            else
+            {
+                Item wearableBySlotId = character.GetWearableBySlotID(item.Stats.wearSlotId);
+                if ((bool) (UnityEngine.Object) wearableBySlotId)
+                    character.DropItem(wearableBySlotId);
+                character.WearWearable(item);
+                PlayerCamera.main.UpdateWearables();
+            }
+        }
         
-        public static void PickUpItem(Item item) {
+        public static bool AddItemToInventory(Item item) {
             // Based on Body.AutoPickUpItem
             Body p = PlayerCamera.main.body;
             
@@ -84,7 +103,7 @@ namespace BalaurBohemianBroken {
                 var slot = p.FirstEmptySlot();
                 if (slot != null) {
                     p.PickUpItem(item, slot.Value, true);
-                    return;
+                    return true;
                 }
             }
 
@@ -103,15 +122,18 @@ namespace BalaurBohemianBroken {
                 candidates.Sort((x, y) => CompareContainerDesirability(x, y, item));
                 Container container = candidates.Last();
                 container.LoadItem(item);
-                return;
+                return true;
             }
 
             if (store_in_containers_first) {
                 var slot = p.FirstEmptySlot();
                 if (slot != null) {
                     p.PickUpItem(item, slot.Value, true);
+                    return true;
                 }
             }
+
+            return false;
         }
         
         public static void CreateStorageComparisonStack() {
