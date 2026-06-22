@@ -63,6 +63,51 @@ namespace BalaurBohemianBroken {
             },
         };
         
+
+        public static bool CanUseInRecipeSlot(Item item, RecipeItem recipe_slot) {
+            // A not-list version of RecipeItem.GetMatchingItem that checks individual items.
+            if (!item.favourited && (!(item.id == recipe_slot.ignoredId) || recipe_slot.isLiquid))
+            {
+                if (recipe_slot.isLiquid)
+                {
+                    WaterContainerItem component;
+                    if (item.TryGetComponent<WaterContainerItem>(out component))
+                    {
+                        if (recipe_slot.specific)
+                        {
+                            if ((double) component.AmountOf(recipe_slot.specificId) >= (double) recipe_slot.minimumCondition)
+                                return true;
+                        }
+                        else
+                        {
+                            foreach (LiquidStack liquidStack in component.stack)
+                            {
+                                LiquidType liquidType;
+                                Liquids.Registry.TryGetValue(liquidStack.liquidId, out liquidType);
+                                if (Item.GetQualityThatMeetsCriteria(recipe_slot.quality, liquidType.GetScaledQualities(liquidStack.amount)) != null)
+                                    return true;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    Container component;
+                    if (!item.TryGetComponent<Container>(out component) || component.itemCount <= 0)
+                    {
+                        if (recipe_slot.specific)
+                        {
+                            if (item.id == recipe_slot.specificId && (double) item.condition >= (double) recipe_slot.minimumCondition)
+                                return true;
+                        }
+                        else if ((double) item.condition >= (double) recipe_slot.minimumCondition && Item.GetQualityThatMeetsCriteria(recipe_slot.quality, item.Stats.qualities) != null)
+                            return true;
+                    }
+                }
+            }
+            return false;
+        }
+        
         // TODO: I STILL get a lag spike when crafting. I've verified however, that it's not because of this mod. It happens regardless. Investigate more?
         public static List<Item> GetItemsForRecipe(Recipe __instance, bool stop_on_null) {
             // This finding code is largely from Recipe.GetItemsForRecipeThorough
@@ -96,7 +141,7 @@ namespace BalaurBohemianBroken {
             foreach (Item item in available_items) {
                 // I am not completely certain that this has parity with RecipeItem.GetMatchingItem.
                 // I don't know why the functions are completely separated as they are.
-                if (slot.DoesUseItemType(item))
+                if (CanUseInRecipeSlot(item, slot))
                     candidates.Add(item);
             }
 
