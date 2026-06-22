@@ -28,16 +28,20 @@ namespace BalaurBohemianBroken {
         public static void Postfix() {
             Dictionary<string, string> lines = new Dictionary<string, string> {
                 #region Crafting settings
-                {"gamesetcompare_container_enabled", "<color=purple>Crafting</color>: Prefer not containers"},
-                {"gamesetcompare_container_enableddsc", "Use containers later."},
-                {"gamesetcompare_wearable_enabled", "<color=purple>Crafting</color>: Prefer not wearables"},
-                {"gamesetcompare_wearable_enableddsc", "Use wearables later."},
-                {"gamesetcompare_quality_enabled", "<color=purple>Crafting</color>: Prefer higher quality"},
-                {"gamesetcompare_quality_enableddsc", "Use items of lower quality, like lower hammering, later."},
-                {"gamesetcompare_value_enabled", "<color=purple>Crafting</color>: Prefer lower value"},
-                {"gamesetcompare_value_enableddsc", "Use items of higher trading value later."},
-                {"gamesetcompare_condition_enabled", "<color=purple>Crafting</color>: Prefer lower condition"},
-                {"gamesetcompare_condition_enableddsc", "Use items with higher condition later."},
+                {"gamesetprefer_on_floor", "<color=purple>Crafting</color>: Prefer on floor"},
+                {"gamesetprefer_on_floordsc", "Use materials on the floor before things in your inventory."},
+                {"gamesetprefer_not_container", "<color=purple>Crafting</color>: Prefer not containers"},
+                {"gamesetprefer_not_containerdsc", "Use containers, like bags, later."},
+                {"gamesetprefer_not_wearable", "<color=purple>Crafting</color>: Prefer not wearables"},
+                {"gamesetprefer_not_wearabledsc", "Use wearables, like clothing, later."},
+                {"gamesetprefer_on_body", "<color=purple>Crafting</color>: Prefer held"},
+                {"gamesetprefer_on_bodydsc", "Use materials in your hands/mouth/back before things in your inventory."},
+                {"gamesetprefer_high_quality", "<color=purple>Crafting</color>: Prefer higher quality"},
+                {"gamesetprefer_high_qualitydsc", "Use items of lower quality, like lower hammering, later."},
+                {"gamesetprefer_low_value", "<color=purple>Crafting</color>: Prefer lower value"},
+                {"gamesetprefer_low_valuedsc", "Use items of higher trading value later."},
+                {"gamesetprefer_low_condition", "<color=purple>Crafting</color>: Prefer lower condition"},
+                {"gamesetprefer_low_conditiondsc", "Use items with higher condition later."},
                 #endregion
                 #region Autopickup rules
                 {"gamesetliquids_can_mix", "<color=purple>Storage (Liquid)</color>: Allow liquids to mix"},
@@ -62,7 +66,7 @@ namespace BalaurBohemianBroken {
                 {"gamesetcompare_storage_full", "<color=purple>Storage</color>: Prefer fuller container"},
                 {"gamesetcompare_storage_fulldsc", "When storing crafted items, prefer containers that are more full."},
                 {"gamesetcompare_storage_capacity", "<color=purple>Storage</color>: Prefer larger containers"},
-                {"gamesetcompare_storage_capacitydsc", "When storing crafted items, prefer containers that are more larger."},
+                {"gamesetcompare_storage_capacitydsc", "When storing crafted items, prefer containers that are larger."},
                 {"gamesetcompare_storage_best_condition", "<color=purple>Storage</color>: Prefer best condition container"},
                 {"gamesetcompare_storage_best_conditiondsc", "When storing crafted items, prefer containers that have higher condition."},
                 #endregion

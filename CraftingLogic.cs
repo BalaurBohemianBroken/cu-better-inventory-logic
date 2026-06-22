@@ -4,59 +4,81 @@ using System.Linq;
 namespace BalaurBohemianBroken {
     public class CraftingLogic {
         public static List<ItemComparison> crafting_comparison_stack = new List<ItemComparison>();
-        public static bool compare_container_enabled;
-        public static bool compare_wearable_enabled;
-        public static bool compare_quality_enabled;
-        public static bool compare_value_enabled;
-        public static bool compare_condition_enabled;
+        public static bool prefer_on_floor;
+        public static bool prefer_not_container;
+        public static bool prefer_not_wearable;
+        public static bool prefer_on_body;
+        public static bool prefer_high_quality;
+        public static bool prefer_low_value;
+        public static bool prefer_low_condition;
 
         public static List<Setting> settings = new List<Setting>() {
             new SettingBool {
-                name = "compare_container_enabled",
+                name = "prefer_on_floor",
                 value = true,
                 apply = delegate {
-                    compare_container_enabled =
-                        Settings.Get<SettingBool>("compare_container_enabled").value;
+                    prefer_on_floor =
+                        Settings.Get<SettingBool>("prefer_on_floor").value;
                     CreateCraftingComparisonStack();
                 },
                 category = Setting.SettingCategory.Game
             },
             new SettingBool {
-                name = "compare_wearable_enabled",
+                name = "prefer_not_container",
                 value = true,
                 apply = delegate {
-                    compare_wearable_enabled =
-                        Settings.Get<SettingBool>("compare_wearable_enabled").value;
+                    prefer_not_container =
+                        Settings.Get<SettingBool>("prefer_not_container").value;
                     CreateCraftingComparisonStack();
                 },
                 category = Setting.SettingCategory.Game
             },
             new SettingBool {
-                name = "compare_quality_enabled",
+                name = "prefer_not_wearable",
                 value = true,
                 apply = delegate {
-                    compare_quality_enabled =
-                        Settings.Get<SettingBool>("compare_quality_enabled").value;
+                    prefer_not_wearable =
+                        Settings.Get<SettingBool>("prefer_not_wearable").value;
                     CreateCraftingComparisonStack();
                 },
                 category = Setting.SettingCategory.Game
             },
             new SettingBool {
-                name = "compare_value_enabled",
+                name = "prefer_on_body",
                 value = true,
                 apply = delegate {
-                    compare_value_enabled =
-                        Settings.Get<SettingBool>("compare_value_enabled").value;
+                    prefer_on_body =
+                        Settings.Get<SettingBool>("prefer_on_body").value;
                     CreateCraftingComparisonStack();
                 },
                 category = Setting.SettingCategory.Game
             },
             new SettingBool {
-                name = "compare_condition_enabled",
+                name = "prefer_high_quality",
                 value = true,
                 apply = delegate {
-                    compare_condition_enabled =
-                        Settings.Get<SettingBool>("compare_condition_enabled").value;
+                    prefer_high_quality =
+                        Settings.Get<SettingBool>("prefer_high_quality").value;
+                    CreateCraftingComparisonStack();
+                },
+                category = Setting.SettingCategory.Game
+            },
+            new SettingBool {
+                name = "prefer_low_value",
+                value = true,
+                apply = delegate {
+                    prefer_low_value =
+                        Settings.Get<SettingBool>("prefer_low_value").value;
+                    CreateCraftingComparisonStack();
+                },
+                category = Setting.SettingCategory.Game
+            },
+            new SettingBool {
+                name = "prefer_low_condition",
+                value = true,
+                apply = delegate {
+                    prefer_low_condition =
+                        Settings.Get<SettingBool>("prefer_low_condition").value;
                     CreateCraftingComparisonStack();
                 },
                 category = Setting.SettingCategory.Game
@@ -157,23 +179,31 @@ namespace BalaurBohemianBroken {
         public static void CreateCraftingComparisonStack() {
             crafting_comparison_stack = new List<ItemComparison>();
 
-            if (compare_container_enabled) {
+            if (prefer_on_floor) {
+                crafting_comparison_stack.Add(new ItemCompareOnFloor(false));
+            }
+            
+            if (prefer_not_container) {
                 crafting_comparison_stack.Add(new ItemCompareContainer(true));
             }
             
-            if (compare_wearable_enabled) {
+            if (prefer_not_wearable) {
                 crafting_comparison_stack.Add(new ItemCompareWearable(true));
             }
             
-            if (compare_quality_enabled) {
+            if (prefer_on_body) {
+                crafting_comparison_stack.Add(new ItemCompareOnBody(false));
+            }
+            
+            if (prefer_high_quality) {
                 crafting_comparison_stack.Add(new ItemCompareQuality(false));
             }
             
-            if (compare_value_enabled) {
+            if (prefer_low_value) {
                 crafting_comparison_stack.Add(new ItemCompareValue(true));
             }
             
-            if (compare_condition_enabled) {
+            if (prefer_low_condition) {
                 crafting_comparison_stack.Add(new ItemCompareCondition(true));
             }
         }
@@ -336,6 +366,38 @@ namespace BalaurBohemianBroken {
             if (ys.wearable)
                 return -1 * reverse_sign;
             return 0;
+        }
+    }
+    
+    public class ItemCompareOnBody : ItemComparison {
+        public ItemCompareOnBody(bool reverse) : base(reverse) {
+            
+        }
+        
+        public override int Compare(Item x, Item y, RecipeItem recipe_slot) {
+            bool x_on_body = StorageLogic.IsItemOnBody(x);
+            bool y_on_body = StorageLogic.IsItemOnBody(y);
+            if (x_on_body == y_on_body)
+                return 0;
+            if (x_on_body)
+                return 1;
+            return -1;
+        }
+    }
+    
+    public class ItemCompareOnFloor : ItemComparison {
+        public ItemCompareOnFloor(bool reverse) : base(reverse) {
+            
+        }
+        
+        public override int Compare(Item x, Item y, RecipeItem recipe_slot) {
+            bool x_floor = StorageLogic.IsItemOnFloor(x);
+            bool y_floor = StorageLogic.IsItemOnFloor(y);
+            if (x_floor == y_floor)
+                return 0;
+            if (x_floor)
+                return 1;
+            return -1;
         }
     }
     #endregion

@@ -135,6 +135,19 @@ namespace BalaurBohemianBroken {
 
             return false;
         }
+
+        public static bool IsItemOnBody(Item item) {
+            // I don't know for sure that this fully checks that.
+            // This will almost certainly cause an obscure bug, like with floating items.
+            // Based on looking at Body.PickUpItem
+            // This explicitly exludes wearables. I'm not checking if it's worn.
+            return !item.Stats.wearable && !item.rb.simulated && item.ParentContainer() == null;
+        }
+
+        public static bool IsItemOnFloor(Item item) {
+            // This isn't a great check, but I think it should work well enough.
+            return item.ParentContainer() == null && !IsItemOnBody(item);
+        }
         
         public static void CreateStorageComparisonStack() {
             storage_comparison_stack = new List<StorageComparison>();
