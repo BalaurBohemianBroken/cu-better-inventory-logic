@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Collections.Generic;
 
@@ -11,15 +12,26 @@ namespace BalaurBohemianBroken {
         public static bool compare_storage_capacity;
         public static bool compare_storage_best_condition;
 
-        public static List<Setting> settings = new List<Setting>() {
+        // This is terrible form, having a side effect like this. But that's modding.
+        public static bool notify_where_stored;
+        public static HashSet<string> storing_in = new HashSet<string>();
 
+        public static List<Setting> settings = new List<Setting>() {
+            new SettingBool {
+                name = "notify_where_stored",
+                value = true,
+                apply = delegate {
+                    notify_where_stored =
+                        Settings.Get<SettingBool>("notify_where_stored").value;
+                },
+                category = Setting.SettingCategory.Game
+            },
             new SettingBool {
                 name = "store_in_containers_first",
                 value = true,
                 apply = delegate {
                     store_in_containers_first =
                         Settings.Get<SettingBool>("store_in_containers_first").value;
-                    // CreateStorageComparisonStack();
                 },
                 category = Setting.SettingCategory.Game
             },
@@ -82,7 +94,10 @@ namespace BalaurBohemianBroken {
             if (!item.Stats.wearable)
             {
                 // TODO: This is the only part of this code I change. I could transpile this.
-                StorageLogic.AddItemToInventory(item);
+                string stored_in = AddItemToInventory(item);
+                if (stored_in == null)
+                    stored_in = "the floor";
+                storing_in.Add(stored_in);
             }
             else
             {
@@ -94,20 +109,42 @@ namespace BalaurBohemianBroken {
             }
         }
         
-        public static bool AddItemToInventory(Item item) {
+        public static string AddItemToInventory(Item item) {
+            // Return value of this is a bit gross. Because inventory slots don't share an interface with containers,
+            // I can't return a unified object. I hope this won't bite me in the future.
             // Based on Body.AutoPickUpItem
-            Body p = PlayerCamera.main.body;
             
-            // Try pick item up.
-            if (!store_in_containers_first) {
-                var slot = p.FirstEmptySlot();
-                if (slot != null) {
-                    p.PickUpItem(item, slot.Value, true);
-                    return true;
-                }
+            // Try hold item.
+            if (!store_in_containers_first && TryHoldItem(item) != -1) {
+                return "inventory";
             }
 
             // Try store item.
+            Container stored_in = TryStoreItem(item); 
+            if (stored_in != null)
+                return BetterInventoryLogic.NameOrUnrecognized(stored_in.mItem);
+            
+            if (TryHoldItem(item) != -1) {
+                return "inventory";
+            }
+
+            return null;
+        }
+
+        public static int TryHoldItem(Item item) {
+            // Returns slot ID it went into.
+            Body p = PlayerCamera.main.body;
+            var slot = p.FirstEmptySlot();
+            if (slot != null) {
+                p.PickUpItem(item, slot.Value, true);
+                return slot.Value;
+            }
+
+            return -1;
+        }
+
+        public static Container TryStoreItem(Item item) {
+            Body p = PlayerCamera.main.body;
             List<Container> candidates = new List<Container>();
             foreach (Item surfaceInventoryItem in p.GetSurfaceInventoryItems()) {
                 Container c = surfaceInventoryItem.container; 
@@ -122,20 +159,17 @@ namespace BalaurBohemianBroken {
                 candidates.Sort((x, y) => CompareContainerDesirability(x, y, item));
                 Container container = candidates.Last();
                 container.LoadItem(item);
-                return true;
+                return container;
             }
 
-            if (store_in_containers_first) {
-                var slot = p.FirstEmptySlot();
-                if (slot != null) {
-                    p.PickUpItem(item, slot.Value, true);
-                    return true;
-                }
-            }
-
-            return false;
+            return null;
         }
 
+        public static void InformWhereStored() {
+            string stored_in = String.Join(", ", storing_in);
+            PlayerCamera.main.DoAlert($"Stored: {stored_in}");
+        }
+        
         public static bool IsItemOnBody(Item item) {
             // I don't know for sure that this fully checks that.
             // This will almost certainly cause an obscure bug, like with floating items.

@@ -121,6 +121,11 @@ namespace BalaurBohemianBroken {
             var best_bottle = FindBestBottle(item_id, amount);
             if (best_bottle != null) {
                 best_bottle.AddLiquid(item_id, amount);
+                var container = best_bottle.item.ParentContainer();
+                string stored_in = BetterInventoryLogic.NameOrUnrecognized(best_bottle.item);
+                if (container != null)
+                    stored_in += $" ({BetterInventoryLogic.NameOrUnrecognized(container.mItem)})";
+                StorageLogic.storing_in.Add(stored_in);
                 return true;
             }
             return false;

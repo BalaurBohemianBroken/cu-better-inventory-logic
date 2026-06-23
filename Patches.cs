@@ -56,8 +56,10 @@ namespace BalaurBohemianBroken {
                 {"gamesetcompare_liquid_weight_enabled", "<color=purple>Storage (Liquid)</color>: Prefer low weight liquid containers"},
                 {"gamesetcompare_liquid_weight_enableddsc", "Prefer containers that have the lowest weight to highest liquid ratio when full."},
                 
+                {"gamesetnotify_where_stored", "<color=purple>Storage</color>: Notify where stored"},
+                {"gamesetnotify_where_storeddsc", "Create a popup that specifies where the output of crafting recipes was placed."},
                 {"gamesetstore_in_containers_first", "<color=purple>Storage</color>: Store in containers first"},
-                {"gamesetstore_in_containers_firstdsc", "Put crafted items into containers first, rather than in hands/mouth/back"},
+                {"gamesetstore_in_containers_firstdsc", "Put crafted items into containers first, rather than in hands/mouth/back."},
 
                 {"gamesetcompare_storage_type", "<color=purple>Storage</color>: Prefer matched container type"},
                 {"gamesetcompare_storage_typedsc", "When storing crafted items, choose containers specific to this item type, such as the material pouch for materials."},
@@ -123,10 +125,11 @@ namespace BalaurBohemianBroken {
                         return false;
                 }
             }
-
+            
+            // TODO: I don't change much of this code! I could make it a transpiler with a little work.
+            StorageLogic.storing_in =  new HashSet<string>();  // Added this line.
             for (int index = 0; index < __instance.amount; ++index) {
                 if (__instance.isLiquid) {
-                    // TODO: This is the only part of code that is changed! I can do this easily with a transpiler.
                     string item_id = __instance.id;
                     float amount = __instance.resultCondition * crafted_condition;
                     bool try_store = LiquidStorageLogic.StoreLiquid(__instance.id, __instance.resultCondition * crafted_condition);
@@ -158,6 +161,9 @@ namespace BalaurBohemianBroken {
                     }
                 }
             }
+            if (StorageLogic.notify_where_stored)
+                StorageLogic.InformWhereStored();
+            
 
             return false;
         }

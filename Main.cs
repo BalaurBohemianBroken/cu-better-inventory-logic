@@ -45,5 +45,9 @@ namespace BalaurBohemianBroken {
 
             return all_items;
         }
+
+        public static string NameOrUnrecognized(Item item) {
+            return item.Stats.rec.recognizable ? item.fullName : Locale.GetOther("unknownobject");
+        }
     }
 }
